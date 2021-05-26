@@ -303,6 +303,10 @@ sealed class KtFirDiagnostic<PSI: PsiElement> : KtDiagnosticWithPsi<PSI> {
         abstract val reason: String
     }
 
+    abstract class CyclicInheritanceHierarchy : KtFirDiagnostic<PsiElement>() {
+        override val diagnosticClass get() = CyclicInheritanceHierarchy::class
+    }
+
     abstract class ConstructorInObject : KtFirDiagnostic<KtDeclaration>() {
         override val diagnosticClass get() = ConstructorInObject::class
     }
@@ -1658,6 +1662,10 @@ sealed class KtFirDiagnostic<PSI: PsiElement> : KtDiagnosticWithPsi<PSI> {
 
     abstract class ToplevelTypealiasesOnly : KtFirDiagnostic<KtTypeAlias>() {
         override val diagnosticClass get() = ToplevelTypealiasesOnly::class
+    }
+
+    abstract class RecursiveTypealiasExpansion : KtFirDiagnostic<KtTypeAlias>() {
+        override val diagnosticClass get() = RecursiveTypealiasExpansion::class
     }
 
     abstract class RedundantVisibilityModifier : KtFirDiagnostic<KtModifierListOwner>() {

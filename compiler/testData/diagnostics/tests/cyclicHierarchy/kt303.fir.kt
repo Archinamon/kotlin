@@ -4,7 +4,7 @@ open class Foo() : Bar() {
   val a : Int = 1
 }
 
-open class Bar() : <!OTHER_ERROR!>Foo<!>() {
+open class Bar() : <!CYCLIC_INHERITANCE_HIERARCHY!>Foo<!>() {
 
 }
 

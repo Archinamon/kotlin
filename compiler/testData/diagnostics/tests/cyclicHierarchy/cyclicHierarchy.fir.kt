@@ -2,8 +2,8 @@ interface A {
     fun foo() {}
 }
 interface B : A, E {}
-interface C : <!OTHER_ERROR!>B<!> {}
-interface D : <!OTHER_ERROR!>B<!> {}
+interface C : <!CYCLIC_INHERITANCE_HIERARCHY!>B<!> {}
+interface D : <!CYCLIC_INHERITANCE_HIERARCHY!>B<!> {}
 interface E : F {}
 interface F : D, C {}
 interface G : F {}

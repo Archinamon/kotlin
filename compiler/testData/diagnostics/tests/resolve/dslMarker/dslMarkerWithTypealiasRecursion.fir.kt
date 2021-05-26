@@ -8,7 +8,7 @@ class Foo
 
 class Bar
 
-typealias YBar = <!OTHER_ERROR!>ZBar<!>
+typealias YBar = <!RECURSIVE_TYPEALIAS_EXPANSION!>ZBar<!>
 typealias ZBar = YBar
 
 fun Foo.foo(body: Foo.() -> Unit) = body()

@@ -1,5 +1,5 @@
 open class A : B()
-open class B : <!OTHER_ERROR!>A<!>()
+open class B : <!CYCLIC_INHERITANCE_HIERARCHY!>A<!>()
 
 fun <T> select(vararg xs: T): T = xs[0]
 
