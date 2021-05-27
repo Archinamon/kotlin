@@ -1,4 +1,4 @@
-open class RecA<T>: RecB<T>()
+open class RecA<T>: <!CYCLIC_INHERITANCE_HIERARCHY!>RecB<T><!>()
 open class RecB<T>: <!CYCLIC_INHERITANCE_HIERARCHY!>RecA<T><!>()
 open class SelfR<T>: <!CYCLIC_INHERITANCE_HIERARCHY!>SelfR<T><!>()
 
