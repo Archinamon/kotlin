@@ -94,4 +94,3 @@ internal fun CirPackageNode.buildTypeAlias(context: TargetBuildingContext, treeT
     }
     typeAliasNode.targetDeclarations[context.targetIndex] = treeTypeAlias.typeAlias
 }
-
