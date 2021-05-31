@@ -65,9 +65,7 @@ public class KtValueArgument extends KtElementImplStub<KotlinValueArgumentStub<?
         KotlinPlaceHolderStub<? extends KtValueArgument> stub = getStub();
         if (stub != null) {
             KtExpression[] constantExpressions = stub.getChildrenByType(CONSTANT_EXPRESSIONS_TYPES, KtExpression.EMPTY_ARRAY);
-            if (constantExpressions.length != 0) {
-                return constantExpressions[0];
-            }
+            return constantExpressions.length != 0 ? constantExpressions[0] : null;
         }
 
         return findChildByClass(KtExpression.class);
