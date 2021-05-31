@@ -9,7 +9,9 @@ import org.jetbrains.kotlin.gradle.targets.js.RequiredKotlinJsDependency
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmDependency
 import org.jetbrains.kotlin.gradle.targets.js.npm.NpmDependencyDeclaration
 import org.jetbrains.kotlin.gradle.targets.js.npm.RequiresNpmDependencies
+import org.jetbrains.kotlin.gradle.targets.js.npm.npmProject
 import org.jetbrains.kotlin.gradle.targets.js.npm.toDeclaration
+
 import java.io.Serializable
 
 class TasksRequirements : Serializable {
@@ -19,8 +21,8 @@ class TasksRequirements : Serializable {
     val byTask: Map<String, Set<RequiredKotlinJsDependency>>
         get() = _byTask
 
-    internal fun getCompilationNpmRequirements(compilationName: String): Set<NpmDependencyDeclaration> =
-        byCompilation[compilationName]
+    internal fun getCompilationNpmRequirements(projectPath: String, compilationName: String): Set<NpmDependencyDeclaration> =
+        byCompilation["$projectPath:$compilationName"]
             ?: setOf()
 
     fun addTaskRequirements(task: RequiresNpmDependencies) {
@@ -34,11 +36,12 @@ class TasksRequirements : Serializable {
             .filterIsInstance<NpmDependency>()
             .toMutableSet()
 
-        val compilation = task.compilation.disambiguatedName
-        if (compilation in byCompilation) {
-            byCompilation[compilation]!!.addAll(requiredNpmDependencies.map { it.toDeclaration() })
+        val projectPath = task.compilation.npmProject.project.path
+        val compilationPath = "$projectPath:${task.compilation.disambiguatedName}"
+        if (compilationPath in byCompilation) {
+            byCompilation[compilationPath]!!.addAll(requiredNpmDependencies.map { it.toDeclaration() })
         } else {
-            byCompilation[compilation] = requiredNpmDependencies.map { it.toDeclaration() }.toMutableSet()
+            byCompilation[compilationPath] = requiredNpmDependencies.map { it.toDeclaration() }.toMutableSet()
         }
     }
 }
