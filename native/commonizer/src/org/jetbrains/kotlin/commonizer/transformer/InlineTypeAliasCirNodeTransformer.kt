@@ -131,6 +131,9 @@ private data class ArtificialAliasedCirClass(
     val pointedClass: CirClass
 ) : CirClass by pointedClass, ArtificialCirDeclaration {
     override val name: CirName = pointingTypeAlias.name
+    override var companion: CirName?
+        get() = null
+        set(_) = throw UnsupportedOperationException("Can't set companion on artificial class (pointed by $pointingTypeAlias)")
 }
 
 private fun CirTypeAlias.toArtificialCirClass(): CirClass = CirClass.create(
