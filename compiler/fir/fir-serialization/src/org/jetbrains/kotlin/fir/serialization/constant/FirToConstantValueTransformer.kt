@@ -8,6 +8,7 @@ package org.jetbrains.kotlin.fir.serialization.constant
 import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.declarations.FirEnumEntry
 import org.jetbrains.kotlin.fir.expressions.*
+import org.jetbrains.kotlin.fir.render
 import org.jetbrains.kotlin.fir.types.classId
 import org.jetbrains.kotlin.fir.types.coneType
 import org.jetbrains.kotlin.fir.types.coneTypeUnsafe
@@ -21,7 +22,7 @@ internal object FirToConstantValueTransformer : FirDefaultVisitor<ConstantValue<
         element: FirElement,
         data: Nothing?
     ): ConstantValue<*>? {
-        error("Illegal element as annotation argument: ${element::class.qualifiedName}")
+        error("Illegal element as annotation argument: ${element::class.qualifiedName} -> ${element.render()}")
     }
 
     @OptIn(ExperimentalUnsignedTypes::class)
