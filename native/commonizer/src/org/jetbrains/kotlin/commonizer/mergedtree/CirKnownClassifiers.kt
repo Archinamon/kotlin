@@ -18,6 +18,7 @@ interface CirCommonizedClassifierNodes {
     /* Accessors */
     fun classNode(classId: CirEntityId): CirClassNode?
     fun typeAliasNode(typeAliasId: CirEntityId): CirTypeAliasNode?
+    fun classifierNode(classifierId: CirEntityId): CirClassifierNode<*, *>? = classNode(classifierId) ?: typeAliasNode(classifierId)
 
     /* Mutators */
     fun addClassNode(classId: CirEntityId, node: CirClassNode)

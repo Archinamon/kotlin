@@ -49,33 +49,45 @@ internal class InlineTypeAliasCirNodeTransformer(
 
         val fromAliasedClassNode = classes[fromTypeAlias.expandedType.classifierId]
 
-        val artificialAliasedClass = ArtificialAliasedCirClass(
+        val intoArtificialClass = ArtificialAliasedCirClass(
             pointingTypeAlias = fromTypeAlias,
             pointedClass = fromAliasedClassNode?.targetDeclarations?.get(targetIndex) ?: fromTypeAlias.toArtificialCirClass()
         )
 
-        intoClassNode.targetDeclarations[targetIndex] = artificialAliasedClass
+        intoClassNode.targetDeclarations[targetIndex] = intoArtificialClass
+
+        if (fromAliasedClassNode != null && !fromTypeAlias.expandedType.isMarkedNullable) {
+            inlineArtificialMembers(fromAliasedClassNode, intoClassNode, intoArtificialClass, targetIndex)
+        }
+    }
+
+    private fun inlineArtificialMembers(
+        fromAliasedClassNode: CirClassNode,
+        intoClassNode: CirClassNode,
+        intoClass: CirClass,
+        targetIndex: Int
+    ) {
         val targetSize = intoClassNode.targetDeclarations.size
 
-        fromAliasedClassNode?.constructors?.forEach { (key, aliasedConstructorNode) ->
+        fromAliasedClassNode.constructors.forEach { (key, aliasedConstructorNode) ->
             val aliasedConstructor = aliasedConstructorNode.targetDeclarations[targetIndex] ?: return@forEach
             intoClassNode.constructors.getOrPut(key) {
                 buildClassConstructorNode(storageManager, targetSize, classifiers, CommonizerCondition.parent(intoClassNode))
-            }.targetDeclarations[targetIndex] = aliasedConstructor.withContainingClass(artificialAliasedClass).markedArtificial()
+            }.targetDeclarations[targetIndex] = aliasedConstructor.withContainingClass(intoClass).markedArtificial()
         }
 
-        fromAliasedClassNode?.functions?.forEach { (key, aliasedFunctionNode) ->
+        fromAliasedClassNode.functions.forEach { (key, aliasedFunctionNode) ->
             val aliasedFunction = aliasedFunctionNode.targetDeclarations[targetIndex] ?: return@forEach
             intoClassNode.functions.getOrPut(key) {
                 buildFunctionNode(storageManager, targetSize, classifiers, CommonizerCondition.parent(intoClassNode))
-            }.targetDeclarations[targetIndex] = aliasedFunction.withContainingClass(artificialAliasedClass).markedArtificial()
+            }.targetDeclarations[targetIndex] = aliasedFunction.withContainingClass(intoClass).markedArtificial()
         }
 
-        fromAliasedClassNode?.properties?.forEach { (key, aliasedPropertyNode) ->
+        fromAliasedClassNode.properties.forEach { (key, aliasedPropertyNode) ->
             val aliasedProperty = aliasedPropertyNode.targetDeclarations[targetIndex] ?: return@forEach
             intoClassNode.properties.getOrPut(key) {
                 buildPropertyNode(storageManager, targetSize, classifiers, CommonizerCondition.parent(intoClassNode))
-            }.targetDeclarations[targetIndex] = aliasedProperty.withContainingClass(artificialAliasedClass).markedArtificial()
+            }.targetDeclarations[targetIndex] = aliasedProperty.withContainingClass(intoClass).markedArtificial()
         }
     }
 

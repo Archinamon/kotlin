@@ -1,5 +1,4 @@
 expect class A()
-
 // Lifted up type aliases:
 typealias B = A // class at the RHS
 typealias C = A // TA at the RHS, expanded to the same class

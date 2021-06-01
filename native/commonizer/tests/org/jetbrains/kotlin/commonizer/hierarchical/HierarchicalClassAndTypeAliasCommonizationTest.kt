@@ -194,4 +194,53 @@ class HierarchicalClassAndTypeAliasCommonizationTest : AbstractInlineSourcesComm
         result.assertCommonized("(a, b)", "expect class X<T> expect constructor()")
         result.assertCommonized("((a, b), c)", "")
     }
+
+    fun `test typeAlias with nullability`() {
+        val result = commonize {
+            outputTarget("(a, b)")
+            simpleSingleSourceTarget(
+                "a", """
+                    class A
+                    typealias X = A?
+                """.trimIndent()
+            )
+
+            simpleSingleSourceTarget(
+                "b", """
+                    class B
+                    typealias X = B
+                """.trimIndent()
+            )
+        }
+
+        result.assertCommonized("(a, b)", """expect class X""")
+    }
+
+    fun `test typeAlias chain with nullability`() {
+        val result = commonize {
+            outputTarget("(a, b)")
+            simpleSingleSourceTarget(
+                "a", """
+                    class AB
+                    typealias V = AB?
+                    typealias Y = V
+                """.trimIndent()
+            )
+
+            simpleSingleSourceTarget(
+                "b", """
+                    class AB
+                    typealias V = AB
+                    typealias Y = V
+                """.trimIndent()
+            )
+        }
+
+        result.assertCommonized(
+            "(a, b)", """
+                expect class AB expect constructor()
+                expect class V
+                typealias Y = V
+            """.trimIndent())
+    }
 }
