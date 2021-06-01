@@ -15655,6 +15655,12 @@ public class BlackBoxCodegenTestGenerated extends AbstractBlackBoxCodegenTest {
         public void testSuspendExtension() throws Exception {
             runTest("compiler/testData/codegen/box/fir/SuspendExtension.kt");
         }
+
+        @Test
+        @TestMetadata("varargInSerializedAnnotation.kt")
+        public void testVarargInSerializedAnnotation() throws Exception {
+            runTest("compiler/testData/codegen/box/fir/varargInSerializedAnnotation.kt");
+        }
     }
 
     @Nested

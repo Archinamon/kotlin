@@ -12881,6 +12881,11 @@ public class LightAnalysisModeTestGenerated extends AbstractLightAnalysisModeTes
         public void testNameHighlighter() throws Exception {
             runTest("compiler/testData/codegen/box/fir/NameHighlighter.kt");
         }
+
+        @TestMetadata("varargInSerializedAnnotation.kt")
+        public void testVarargInSerializedAnnotation() throws Exception {
+            runTest("compiler/testData/codegen/box/fir/varargInSerializedAnnotation.kt");
+        }
     }
 
     @TestMetadata("compiler/testData/codegen/box/fullJdk")
