@@ -9,9 +9,7 @@ import org.jetbrains.kotlin.fir.FirElement
 import org.jetbrains.kotlin.fir.declarations.FirEnumEntry
 import org.jetbrains.kotlin.fir.expressions.*
 import org.jetbrains.kotlin.fir.render
-import org.jetbrains.kotlin.fir.types.classId
-import org.jetbrains.kotlin.fir.types.coneType
-import org.jetbrains.kotlin.fir.types.coneTypeUnsafe
+import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.fir.visitors.FirDefaultVisitor
 import org.jetbrains.kotlin.types.ConstantValueKind
 
@@ -77,7 +75,7 @@ internal object FirToConstantValueTransformer : FirDefaultVisitor<ConstantValue<
     ): ConstantValue<*>? {
         val symbol = qualifiedAccessExpression.toResolvedCallableSymbol() ?: return null
         val enumEntry = symbol.fir as? FirEnumEntry ?: return null
-        val classId = enumEntry.returnTypeRef.coneType.classId ?: return null
+        val classId = enumEntry.returnTypeRef.coneTypeSafe<ConeClassLikeType>()?.classId ?: return null
         val outerClassId = classId.outerClassId ?: return null
         return EnumValue(outerClassId, enumEntry.name)
     }
