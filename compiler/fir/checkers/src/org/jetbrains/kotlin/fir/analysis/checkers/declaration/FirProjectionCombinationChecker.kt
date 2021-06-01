@@ -17,7 +17,7 @@ import org.jetbrains.kotlin.fir.types.*
 import org.jetbrains.kotlin.types.Variance
 import org.jetbrains.kotlin.utils.addToStdlib.safeAs
 
-object FirConflictingProjectionChecker : FirBasicDeclarationChecker() {
+object FirProjectionCombinationChecker : FirBasicDeclarationChecker() {
     override fun check(declaration: FirDeclaration, context: CheckerContext, reporter: DiagnosticReporter) {
         if (declaration is FirPropertyAccessor) {
             return
@@ -62,21 +62,40 @@ object FirConflictingProjectionChecker : FirBasicDeclarationChecker() {
                 ?.symbol?.fir
                 ?.variance
 
-            if (
-                (fullyExpandedProjection is ConeKotlinTypeConflictingProjection ||
-                        actual is ConeKotlinTypeProjectionIn && protoVariance == Variance.OUT_VARIANCE ||
-                        actual is ConeKotlinTypeProjectionOut && protoVariance == Variance.IN_VARIANCE) &&
-                typeRef.source?.kind !is FirFakeSourceElementKind
+            val projectionCombination = if (fullyExpandedProjection is ConeKotlinTypeConflictingProjection ||
+                actual is ConeKotlinTypeProjectionIn && protoVariance == Variance.OUT_VARIANCE ||
+                actual is ConeKotlinTypeProjectionOut && protoVariance == Variance.IN_VARIANCE
             ) {
+                ProjectionCombination.Conflicting
+            } else if (type == fullyExpandedType &&
+                (actual is ConeKotlinTypeProjectionIn && protoVariance == Variance.IN_VARIANCE ||
+                        actual is ConeKotlinTypeProjectionOut && protoVariance == Variance.OUT_VARIANCE)
+            ) {
+                ProjectionCombination.Redundant
+            } else {
+                ProjectionCombination.None
+            }
+
+            if (projectionCombination != ProjectionCombination.None && typeRef.source?.kind !is FirFakeSourceElementKind) {
                 val typeArgSource = extractTypeArgumentSource(typeRef, it)
+
                 reporter.reportOn(
                     typeArgSource ?: typeRef.source,
-                    if (type != fullyExpandedType) FirErrors.CONFLICTING_PROJECTION_IN_TYPEALIAS_EXPANSION else FirErrors.CONFLICTING_PROJECTION,
+                    if (projectionCombination == ProjectionCombination.Conflicting)
+                        if (type != fullyExpandedType) FirErrors.CONFLICTING_PROJECTION_IN_TYPEALIAS_EXPANSION else FirErrors.CONFLICTING_PROJECTION
+                    else
+                        FirErrors.REDUNDANT_PROJECTION,
                     fullyExpandedType,
                     context
                 )
             }
         }
+    }
+
+    private enum class ProjectionCombination {
+        Conflicting,
+        Redundant,
+        None
     }
 
     private fun extractTypeArgumentSource(typeRef: FirTypeRef, index: Int): FirSourceElement? {
