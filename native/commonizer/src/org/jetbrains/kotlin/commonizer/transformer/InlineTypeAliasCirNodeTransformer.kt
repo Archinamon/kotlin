@@ -6,67 +6,93 @@
 package org.jetbrains.kotlin.commonizer.transformer
 
 import org.jetbrains.kotlin.commonizer.cir.*
-import org.jetbrains.kotlin.commonizer.mergedtree.CirClassNode
-import org.jetbrains.kotlin.commonizer.mergedtree.CirModuleNode
-import org.jetbrains.kotlin.commonizer.mergedtree.CirRootNode
-import org.jetbrains.kotlin.commonizer.mergedtree.CirTypeAliasNode
+import org.jetbrains.kotlin.commonizer.mergedtree.*
 import org.jetbrains.kotlin.commonizer.transformer.CirNodeTransformer.Context
 import org.jetbrains.kotlin.descriptors.ClassKind
 import org.jetbrains.kotlin.descriptors.Modality
+import org.jetbrains.kotlin.storage.StorageManager
 
-internal object InlineTypeAliasCirNodeTransformer : CirNodeTransformer {
+internal class InlineTypeAliasCirNodeTransformer(
+    private val storageManager: StorageManager,
+    private val classifiers: CirKnownClassifiers
+) : CirNodeTransformer {
     override fun Context.invoke(root: CirRootNode) {
         root.modules.values.forEach(::invoke)
     }
 
     private operator fun invoke(module: CirModuleNode) {
         val classNodeIndex = ClassNodeIndex(module)
-        module.packages.values.flatMap { pkg -> pkg.typeAliases.values }.forEach { typeAliasNode ->
-            inlineTypeAliasIfPossible(classNodeIndex, typeAliasNode)
+
+        module.packages.values.forEach { packageNode ->
+            packageNode.typeAliases.values.forEach { typeAliasNode ->
+                val targetClassNode = classNodeIndex[typeAliasNode.id] ?: packageNode.createArtificialClassNode(typeAliasNode)
+                inlineTypeAliasIfPossible(classNodeIndex, typeAliasNode, targetClassNode)
+            }
         }
     }
 
-    private fun inlineTypeAliasIfPossible(classes: ClassNodeIndex, typeAliasNode: CirTypeAliasNode) {
-        val targetClassNode = classes[typeAliasNode.id] ?: return
-
-        typeAliasNode.targetDeclarations.forEachIndexed { targetIndex, typeAlias ->
+    private fun inlineTypeAliasIfPossible(classes: ClassNodeIndex, fromTypeAliasNode: CirTypeAliasNode, intoClassNode: CirClassNode) {
+        fromTypeAliasNode.targetDeclarations.forEachIndexed { targetIndex, typeAlias ->
             if (typeAlias != null) {
-                inlineTypeAliasIfPossible(classes, typeAlias, targetClassNode, targetIndex)
+                inlineTypeAliasIfPossible(classes, typeAlias, intoClassNode, targetIndex)
             }
         }
     }
 
     private fun inlineTypeAliasIfPossible(
-        classes: ClassNodeIndex, typeAlias: CirTypeAlias, targetClassNode: CirClassNode, targetIndex: Int
+        classes: ClassNodeIndex, fromTypeAlias: CirTypeAlias, intoClassNode: CirClassNode, targetIndex: Int
     ) {
-        if (targetClassNode.targetDeclarations[targetIndex] != null) return // No empty spot to inline the type-alias into
+        if (intoClassNode.targetDeclarations[targetIndex] != null) {
+            // No empty spot to inline the type-alias into
+            return
+        }
 
-        val aliasedClassNode = classes[typeAlias.expandedType.classifierId]
+        val fromAliasedClassNode = classes[fromTypeAlias.expandedType.classifierId]
 
         val artificialAliasedClass = ArtificialAliasedCirClass(
-            pointingTypeAlias = typeAlias,
-            pointedClass = aliasedClassNode?.targetDeclarations?.get(targetIndex) ?: typeAlias.toArtificialCirClass()
+            pointingTypeAlias = fromTypeAlias,
+            pointedClass = fromAliasedClassNode?.targetDeclarations?.get(targetIndex) ?: fromTypeAlias.toArtificialCirClass()
         )
 
-        targetClassNode.targetDeclarations[targetIndex] = artificialAliasedClass
+        intoClassNode.targetDeclarations[targetIndex] = artificialAliasedClass
+        val targetSize = intoClassNode.targetDeclarations.size
 
-        aliasedClassNode?.constructors?.forEach { (key, aliasedConstructorNode) ->
+        fromAliasedClassNode?.constructors?.forEach { (key, aliasedConstructorNode) ->
             val aliasedConstructor = aliasedConstructorNode.targetDeclarations[targetIndex] ?: return@forEach
-            targetClassNode.constructors[key]?.targetDeclarations
-                ?.set(targetIndex, aliasedConstructor.withContainingClass(artificialAliasedClass).markedArtificial())
+            intoClassNode.constructors.getOrPut(key) {
+                buildClassConstructorNode(storageManager, targetSize, classifiers, CommonizerCondition.parent(intoClassNode))
+            }.targetDeclarations[targetIndex] = aliasedConstructor.withContainingClass(artificialAliasedClass).markedArtificial()
         }
 
-        aliasedClassNode?.functions?.forEach { (key, aliasedFunctionNode) ->
+        fromAliasedClassNode?.functions?.forEach { (key, aliasedFunctionNode) ->
             val aliasedFunction = aliasedFunctionNode.targetDeclarations[targetIndex] ?: return@forEach
-            targetClassNode.functions[key]?.targetDeclarations
-                ?.set(targetIndex, aliasedFunction.withContainingClass(artificialAliasedClass).markedArtificial())
+            intoClassNode.functions.getOrPut(key) {
+                buildFunctionNode(storageManager, targetSize, classifiers, CommonizerCondition.parent(intoClassNode))
+            }.targetDeclarations[targetIndex] = aliasedFunction.withContainingClass(artificialAliasedClass).markedArtificial()
         }
 
-        aliasedClassNode?.properties?.forEach { (key, aliasedPropertyNode) ->
+        fromAliasedClassNode?.properties?.forEach { (key, aliasedPropertyNode) ->
             val aliasedProperty = aliasedPropertyNode.targetDeclarations[targetIndex] ?: return@forEach
-            targetClassNode.properties[key]?.targetDeclarations
-                ?.set(targetIndex, aliasedProperty.withContainingClass(artificialAliasedClass).markedArtificial())
+            intoClassNode.properties.getOrPut(key) {
+                buildPropertyNode(storageManager, targetSize, classifiers, CommonizerCondition.parent(intoClassNode))
+            }.targetDeclarations[targetIndex] = aliasedProperty.withContainingClass(artificialAliasedClass).markedArtificial()
         }
+    }
+
+    private fun CirPackageNode.createArtificialClassNode(typeAliasNode: CirTypeAliasNode): CirClassNode {
+        val classNode = buildClassNode(
+            storageManager = storageManager,
+            size = typeAliasNode.targetDeclarations.size,
+            classifiers = classifiers,
+            // This artificial class node should only try to commonize if the package node is commonized
+            //  and if the original typeAliasNode cannot be commonized.
+            //  Therefore, this artificial class node acts as a fallback with the original type-alias being still the preferred
+            //  option for commonization
+            condition = CommonizerCondition.parent(this) and CommonizerCondition.nodeIsNotCommonized(typeAliasNode),
+            classId = typeAliasNode.id
+        )
+        this.classes[typeAliasNode.classifierName] = classNode
+        return classNode
     }
 }
 
@@ -88,3 +114,4 @@ private fun CirTypeAlias.toArtificialCirClass(): CirClass = CirClass.create(
     visibility = this.visibility, modality = Modality.FINAL, kind = ClassKind.CLASS,
     companion = null, isCompanion = false, isData = false, isValue = false, isInner = false, isExternal = false
 ).also { it.supertypes = emptyList() }.markedArtificial()
+

@@ -52,7 +52,7 @@ private fun commonize(
     )
 
     val mergedTree = merge(storageManager, classifiers, cirTrees) ?: return null
-    InlineTypeAliasCirNodeTransformer(mergedTree)
+    InlineTypeAliasCirNodeTransformer(storageManager, classifiers).invoke(mergedTree)
     mergedTree.accept(CommonizationVisitor(classifiers, mergedTree), Unit)
     parameters.logProgress("Commonized declarations for $target")
 

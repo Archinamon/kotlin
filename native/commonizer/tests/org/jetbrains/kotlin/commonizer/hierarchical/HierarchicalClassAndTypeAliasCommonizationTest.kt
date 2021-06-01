@@ -110,20 +110,62 @@ class HierarchicalClassAndTypeAliasCommonizationTest : AbstractInlineSourcesComm
             outputTarget("(a, b)")
             simpleSingleSourceTarget(
                 "a", """
-                class A
+                class A {
+                    val x: Int = 42
+                }
                 typealias X = A
             """.trimIndent()
             )
 
             simpleSingleSourceTarget(
                 "b", """
-                class B
+                class B {
+                    val x: Int = 42
+                }
                 typealias X = B
                 """.trimIndent()
             )
         }
 
-        result.assertCommonized("(a, b)", "expect class X expect constructor()")
+        result.assertCommonized(
+            "(a, b)", """
+                expect class X expect constructor() {
+                    expect val x: Int
+                }
+            """.trimIndent()
+        )
+    }
+
+    fun `test follow exact same typeAlias on both platforms`() {
+        val result = commonize {
+            outputTarget("(a, b)")
+            simpleSingleSourceTarget(
+                "a", """
+                class AB {
+                    val x: Int = 42
+                }
+                typealias X = AB
+            """.trimIndent()
+            )
+
+            simpleSingleSourceTarget(
+                "b", """
+                class AB {
+                    val x: Int = 42
+                }
+                typealias X = AB
+                """.trimIndent()
+            )
+        }
+
+        result.assertCommonized(
+            "(a, b)", """
+                expect class AB expect constructor() {
+                    expect val x: Int
+                }
+                typealias X = AB
+            """.trimIndent()
+        )
     }
 
     fun `test commonization of parameterized class and type parameters`() {
