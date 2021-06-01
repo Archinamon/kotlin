@@ -6,8 +6,8 @@
 package org.jetbrains.kotlin.fir.analysis.checkers.declaration
 
 import org.jetbrains.kotlin.fir.FirFakeSourceElementKind
-import org.jetbrains.kotlin.fir.FirSourceElement
 import org.jetbrains.kotlin.fir.analysis.checkers.context.CheckerContext
+import org.jetbrains.kotlin.fir.analysis.checkers.extractTypeRefAndSourceFromTypeArgument
 import org.jetbrains.kotlin.fir.analysis.diagnostics.DiagnosticReporter
 import org.jetbrains.kotlin.fir.analysis.diagnostics.FirErrors
 import org.jetbrains.kotlin.fir.analysis.diagnostics.reportOn
@@ -45,17 +45,19 @@ object FirProjectionCombinationChecker : FirBasicDeclarationChecker() {
     private fun checkTypeRef(
         typeRef: FirTypeRef,
         context: CheckerContext,
-        reporter: DiagnosticReporter,
+        reporter: DiagnosticReporter
     ) {
         val type = typeRef.coneTypeSafe<ConeClassLikeType>()
         val fullyExpandedType = type?.fullyExpandedType(context.session) ?: return
         val declaration = fullyExpandedType.toSymbol(context.session)?.fir.safeAs<FirRegularClass>() ?: return
+        val typeParameters = declaration.typeParameters
+        val typeArguments = type.typeArguments
 
-        val size = minOf(declaration.typeParameters.size, typeRef.coneType.typeArguments.size)
+        val size = minOf(typeParameters.size, typeArguments.size)
 
         for (it in 0 until size) {
-            val proto = declaration.typeParameters[it]
-            val actual = typeRef.coneType.typeArguments[it]
+            val proto = typeParameters[it]
+            val actual = typeArguments[it]
             val fullyExpandedProjection = fullyExpandedType.typeArguments[it]
 
             val protoVariance = proto.safeAs<FirTypeParameterRef>()
@@ -76,11 +78,11 @@ object FirProjectionCombinationChecker : FirBasicDeclarationChecker() {
                 ProjectionCombination.None
             }
 
-            if (projectionCombination != ProjectionCombination.None && typeRef.source?.kind !is FirFakeSourceElementKind) {
-                val typeArgSource = extractTypeArgumentSource(typeRef, it)
+            val (typeArgTypeRef, typeArgSource) = extractTypeRefAndSourceFromTypeArgument(typeRef, it) ?: continue
 
+            if (projectionCombination != ProjectionCombination.None && typeRef.source?.kind !is FirFakeSourceElementKind) {
                 reporter.reportOn(
-                    typeArgSource ?: typeRef.source,
+                    typeArgSource ?: typeArgTypeRef.source,
                     if (projectionCombination == ProjectionCombination.Conflicting)
                         if (type != fullyExpandedType) FirErrors.CONFLICTING_PROJECTION_IN_TYPEALIAS_EXPANSION else FirErrors.CONFLICTING_PROJECTION
                     else
@@ -89,6 +91,8 @@ object FirProjectionCombinationChecker : FirBasicDeclarationChecker() {
                     context
                 )
             }
+
+            checkTypeRef(typeArgTypeRef, context, reporter)
         }
     }
 
@@ -96,33 +100,5 @@ object FirProjectionCombinationChecker : FirBasicDeclarationChecker() {
         Conflicting,
         Redundant,
         None
-    }
-
-    private fun extractTypeArgumentSource(typeRef: FirTypeRef, index: Int): FirSourceElement? {
-        if (typeRef is FirResolvedTypeRef) {
-            val delegatedTypeRef = typeRef.delegatedTypeRef
-            if (delegatedTypeRef is FirUserTypeRef) {
-                var currentTypeArguments: List<FirTypeProjection>? = null
-                var currentIndex = index
-                val qualifier = delegatedTypeRef.qualifier
-
-                for (i in qualifier.size - 1 downTo 0) {
-                    val typeArguments = qualifier[i].typeArgumentList.typeArguments
-                    if (currentIndex < typeArguments.size) {
-                        currentTypeArguments = typeArguments
-                        break
-                    } else {
-                        currentIndex -= typeArguments.size
-                    }
-                }
-
-                val typeArgument = currentTypeArguments?.elementAtOrNull(currentIndex)
-                if (typeArgument is FirTypeProjectionWithVariance) {
-                    return typeArgument.source
-                }
-            }
-        }
-
-        return null
     }
 }
