@@ -605,7 +605,6 @@ class HierarchicalMultiplatformProjectImportingTest : MultiplePluginVersionGradl
         checkProjectStructure(exhaustiveModuleList = false, exhaustiveSourceSourceRootList = false, exhaustiveDependencyList = true) {
             module("my-app.jvmMain") {
                 moduleDependency("my-app.commonMain", DependencyScope.COMPILE)
-                libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib-common:${gradleKotlinPluginVersion}", DependencyScope.COMPILE)
                 libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib:${gradleKotlinPluginVersion}", DependencyScope.COMPILE)
                 libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk7:${gradleKotlinPluginVersion}", DependencyScope.COMPILE)
                 libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:${gradleKotlinPluginVersion}", DependencyScope.COMPILE)
@@ -617,7 +616,6 @@ class HierarchicalMultiplatformProjectImportingTest : MultiplePluginVersionGradl
                 moduleDependency("my-app.jvmMain", DependencyScope.TEST)
                 moduleDependency("my-app.jvmMain", DependencyScope.TEST)
                 moduleDependency("my-app.commonMain", DependencyScope.TEST)
-                libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib-common:${gradleKotlinPluginVersion}", DependencyScope.TEST)
                 libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk7:${gradleKotlinPluginVersion}", DependencyScope.TEST)
                 libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib-jdk8:${gradleKotlinPluginVersion}", DependencyScope.TEST)
                 libraryDependency("Gradle: org.jetbrains.kotlin:kotlin-stdlib:${gradleKotlinPluginVersion}", DependencyScope.TEST)
