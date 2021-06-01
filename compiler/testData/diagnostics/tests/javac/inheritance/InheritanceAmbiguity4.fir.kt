@@ -44,4 +44,4 @@ public class test extends x2 implements i3 {
 // FILE: test.kt
 package a
 
-fun test1() = test().getO()
+fun test1() = <!RETURN_TYPE_MISMATCH!>test().getO()<!>

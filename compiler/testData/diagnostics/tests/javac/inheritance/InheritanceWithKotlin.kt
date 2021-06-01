@@ -33,6 +33,6 @@ interface KotlinInterface {
 
 private fun getKotlinInner() = UseKotlinInner().kotlinInner
 
-private fun getJavaInner() = UseKotlinInner().javaInner
+private fun getJavaInner() = <!RETURN_TYPE_MISMATCH!>UseKotlinInner().javaInner<!>
 
-private fun getKotlinInner3() = UseKotlinInner().kotlinInner3
+private fun getKotlinInner3() = <!RETURN_TYPE_MISMATCH!>UseKotlinInner().kotlinInner3<!>

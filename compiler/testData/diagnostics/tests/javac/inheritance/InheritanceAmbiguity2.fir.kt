@@ -27,4 +27,4 @@ public class y extends x implements i2 {
 // FILE: test.kt
 package a
 
-fun test() = y().getZ()
+fun test() = <!RETURN_TYPE_MISMATCH!>y().getZ()<!>

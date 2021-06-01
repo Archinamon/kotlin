@@ -37,4 +37,4 @@ public class A2 {
 package b
 
 fun test() = A1().getB()
-fun test2() = A2().getB()
+fun test2() = <!RETURN_TYPE_MISMATCH!>A2().getB()<!>
