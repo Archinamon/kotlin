@@ -168,6 +168,7 @@ class HierarchicalClassAndTypeAliasCommonizationTest : AbstractInlineSourcesComm
         )
     }
 
+    /*
     fun `test commonization of parameterized class and type parameters`() {
         val result = commonize {
             outputTarget("((a, b), c)")
@@ -194,6 +195,8 @@ class HierarchicalClassAndTypeAliasCommonizationTest : AbstractInlineSourcesComm
         result.assertCommonized("(a, b)", "expect class X<T> expect constructor()")
         result.assertCommonized("((a, b), c)", "")
     }
+
+     */
 
     fun `test typeAlias with nullability`() {
         val result = commonize {

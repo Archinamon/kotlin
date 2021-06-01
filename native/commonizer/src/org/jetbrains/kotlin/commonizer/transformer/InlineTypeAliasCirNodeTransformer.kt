@@ -42,6 +42,18 @@ internal class InlineTypeAliasCirNodeTransformer(
     private fun inlineTypeAliasIfPossible(
         classes: ClassNodeIndex, fromTypeAlias: CirTypeAlias, intoClassNode: CirClassNode, targetIndex: Int
     ) {
+        if (fromTypeAlias.typeParameters.isNotEmpty()) {
+            // Inlining parameterized TAs is not supported yet
+            return
+        }
+
+        if (fromTypeAlias.underlyingType.arguments.isNotEmpty() ||
+            fromTypeAlias.underlyingType.run { this as? CirClassType }?.outerType?.arguments?.isNotEmpty() == true
+        ) {
+            // Inlining TAs with parameterized underlying types is not supported yet
+            return
+        }
+
         if (intoClassNode.targetDeclarations[targetIndex] != null) {
             // No empty spot to inline the type-alias into
             return
@@ -126,4 +138,3 @@ private fun CirTypeAlias.toArtificialCirClass(): CirClass = CirClass.create(
     visibility = this.visibility, modality = Modality.FINAL, kind = ClassKind.CLASS,
     companion = null, isCompanion = false, isData = false, isValue = false, isInner = false, isExternal = false
 ).also { it.supertypes = emptyList() }.markedArtificial()
-
