@@ -32,6 +32,8 @@ import org.jetbrains.kotlin.idea.fir.low.level.api.sessions.FirIdeSessionProvide
 import org.jetbrains.kotlin.idea.fir.low.level.api.sessions.FirIdeSourcesSession
 import org.jetbrains.kotlin.idea.fir.low.level.api.util.FirElementFinder
 import org.jetbrains.kotlin.idea.fir.low.level.api.util.findSourceNonLocalFirDeclaration
+import org.jetbrains.kotlin.idea.fir.low.level.api.util.getContainingFile
+import org.jetbrains.kotlin.idea.fir.low.level.api.util.getContainingFileUnsafe
 import org.jetbrains.kotlin.idea.util.getElementTextInContext
 import org.jetbrains.kotlin.psi.*
 import org.jetbrains.kotlin.psi.psiUtil.getParentOfType
@@ -100,9 +102,10 @@ internal class FirModuleResolveStateImpl(
         if (nonLocalFirForNamedDeclaration.resolvePhase < FirResolvePhase.BODY_RESOLVE) {
             val cache = (nonLocalFirForNamedDeclaration.moduleData.session as FirIdeSourcesSession).cache
             firLazyDeclarationResolver.lazyResolveDeclaration(
-                nonLocalFirForNamedDeclaration,
-                cache,
-                FirResolvePhase.BODY_RESOLVE,
+                firDeclarationToResolve = nonLocalFirForNamedDeclaration,
+                containerFirFile = nonLocalFirForNamedDeclaration.getContainingFileUnsafe(),
+                moduleFileCache = cache,
+                toPhase = FirResolvePhase.BODY_RESOLVE,
                 checkPCE = false, /*TODO*/
             )
         }
@@ -123,9 +126,10 @@ internal class FirModuleResolveStateImpl(
             else -> return declaration
         }
         firLazyDeclarationResolver.lazyResolveDeclaration(
-            declaration,
-            fileCache,
-            toPhase,
+            firDeclarationToResolve = declaration,
+            containerFirFile = declaration.getContainingFileUnsafe(),
+            moduleFileCache = fileCache,
+            toPhase = toPhase,
             checkPCE = true,
         )
         return declaration

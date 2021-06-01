@@ -17,6 +17,7 @@ import org.jetbrains.kotlin.idea.fir.low.level.api.file.builder.ModuleFileCache
 import org.jetbrains.kotlin.idea.fir.low.level.api.lazy.resolve.FirLazyDeclarationResolver
 import org.jetbrains.kotlin.idea.fir.low.level.api.providers.firIdeProvider
 import org.jetbrains.kotlin.idea.fir.low.level.api.util.findSourceNonLocalFirDeclaration
+import org.jetbrains.kotlin.idea.fir.low.level.api.util.getContainingFileUnsafe
 import org.jetbrains.kotlin.idea.util.getElementTextInContext
 import org.jetbrains.kotlin.psi.*
 import java.util.concurrent.ConcurrentHashMap
@@ -105,9 +106,10 @@ internal class FileStructure(
             firFile
         )
         firLazyDeclarationResolver.lazyResolveDeclaration(
-            firDeclaration,
-            moduleFileCache,
-            FirResolvePhase.BODY_RESOLVE,
+            firDeclarationToResolve = firDeclaration,
+            containerFirFile = firDeclaration.getContainingFileUnsafe(),
+            moduleFileCache = moduleFileCache,
+            toPhase = FirResolvePhase.BODY_RESOLVE,
             checkPCE = true,
         )
         return moduleFileCache.firFileLockProvider.withReadLock(firFile) {

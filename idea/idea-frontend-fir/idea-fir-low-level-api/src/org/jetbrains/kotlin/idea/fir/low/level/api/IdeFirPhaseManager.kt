@@ -13,6 +13,7 @@ import org.jetbrains.kotlin.fir.symbols.AbstractFirBasedSymbol
 import org.jetbrains.kotlin.idea.fir.low.level.api.file.builder.ModuleFileCache
 import org.jetbrains.kotlin.idea.fir.low.level.api.lazy.resolve.FirLazyDeclarationResolver
 import org.jetbrains.kotlin.idea.fir.low.level.api.sessions.FirSessionInvalidator
+import org.jetbrains.kotlin.idea.fir.low.level.api.util.getContainingFileUnsafe
 
 @ThreadSafeMutableState
 internal class IdeFirPhaseManager(
@@ -26,8 +27,14 @@ internal class IdeFirPhaseManager(
     ) {
         val fir = symbol.fir as FirDeclaration
         try {
-            if (fir.resolvePhase < requiredPhase) {
-                lazyDeclarationResolver.lazyResolveDeclaration(fir, cache, requiredPhase, checkPCE = true)
+            if (fir.resolvePhase < requiredPhase) { //TODO Make thread safe
+                lazyDeclarationResolver.lazyResolveDeclaration(
+                    firDeclarationToResolve = fir,
+                    containerFirFile = fir.getContainingFileUnsafe(),
+                    moduleFileCache = cache,
+                    toPhase = requiredPhase,
+                    checkPCE = true
+                )
             }
         } catch (e: Throwable) {
             sessionInvalidator.invalidate(fir.moduleData.session)

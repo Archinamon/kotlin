@@ -26,6 +26,7 @@ import org.jetbrains.kotlin.idea.fir.low.level.api.lazy.resolve.RawFirNonLocalDe
 import org.jetbrains.kotlin.idea.fir.low.level.api.providers.FirIdeProvider
 import org.jetbrains.kotlin.idea.fir.low.level.api.providers.firIdeProvider
 import org.jetbrains.kotlin.idea.fir.low.level.api.transformers.FirLazyTransformerForIDE.Companion.resolvePhaseWithForAllDeclarations
+import org.jetbrains.kotlin.idea.fir.low.level.api.util.getContainingFileUnsafe
 import org.jetbrains.kotlin.psi.*
 import java.util.concurrent.ConcurrentHashMap
 
@@ -140,9 +141,10 @@ internal class ReanalyzableFunctionStructureElement(
             }
 
             firLazyDeclarationResolver.lazyResolveDeclaration(
-                originalFunction,
-                cache,
-                FirResolvePhase.BODY_RESOLVE,
+                firDeclarationToResolve = originalFunction,
+                containerFirFile = originalFunction.getContainingFileUnsafe(),
+                moduleFileCache = cache,
+                toPhase = FirResolvePhase.BODY_RESOLVE,
                 checkPCE = true,
             )
 
@@ -202,9 +204,10 @@ internal class ReanalyzablePropertyStructureElement(
             }
 
             firLazyDeclarationResolver.lazyResolveDeclaration(
-                originalProperty,
-                cache,
-                FirResolvePhase.BODY_RESOLVE,
+                firDeclarationToResolve = originalProperty,
+                containerFirFile = originalProperty.getContainingFileUnsafe(),
+                moduleFileCache = cache,
+                toPhase = FirResolvePhase.BODY_RESOLVE,
                 checkPCE = true,
             )
 

@@ -90,6 +90,81 @@ internal class FirDesignatedSupertypeResolverTransformerForIDE(
         }
     }
 
+    private fun collect(designation: FirDeclarationUntypedDesignationWithFile): Set<FirDeclarationUntypedDesignationWithFile> {
+        val visited = mutableSetOf<FirDeclarationUntypedDesignationWithFile>()
+        val toVisit = mutableSetOf<FirDeclarationUntypedDesignationWithFile>()
+        toVisit.add(designation)
+
+        while (toVisit.isNotEmpty()) {
+            for (nowVisit in toVisit) {
+                val resolver = DesignatedFirSupertypeResolverVisitor(nowVisit)
+                if (checkPCE) {
+                    FirFileBuilder.runCustomResolveWithPCECheck(nowVisit.firFile, moduleFileCache) {
+                        firLazyDeclarationResolver.lazyResolveFileDeclarationWithoutLock(
+                            firFile = nowVisit.firFile,
+                            moduleFileCache = moduleFileCache,
+                            toPhase = FirResolvePhase.IMPORTS,
+                            scopeSession = scopeSession,
+                            checkPCE = true,
+                        )
+                        nowVisit.firFile.accept(resolver, null)
+                    }
+                } else {
+                    FirFileBuilder.runCustomResolveUnderLock(nowVisit.firFile, moduleFileCache) {
+                        firLazyDeclarationResolver.lazyResolveFileDeclarationWithoutLock(
+                            firFile = nowVisit.firFile,
+                            moduleFileCache = moduleFileCache,
+                            toPhase = FirResolvePhase.IMPORTS,
+                            scopeSession = scopeSession,
+                            checkPCE = false,
+                        )
+                        nowVisit.firFile.accept(resolver, null)
+                    }
+                }
+                resolver.declarationTransformer.ensureDesignationPassed()
+            }
+            visited.addAll(toVisit)
+            toVisit.clear()
+
+            for (value in supertypeComputationSession.supertypeStatusMap.values) {
+                if (value !is SupertypeComputationStatus.Computed) continue
+                for (reference in value.supertypeRefs) {
+                    val classLikeDeclaration = reference.type.toSymbol(session)?.fir
+                    if (classLikeDeclaration !is FirClassLikeDeclaration<*>) continue
+                    if (visited.any { it.declaration == classLikeDeclaration }) continue
+                    val containingFile = moduleFileCache.getContainerFirFile(classLikeDeclaration) ?: continue
+                    toVisit.add(classLikeDeclaration.collectDesignation(containingFile))
+                }
+            }
+        }
+        return visited
+    }
+
+    private fun apply(visited: Set<FirDeclarationUntypedDesignationWithFile>) {
+        fun applyToFileSymbols(designations: List<FirDeclarationUntypedDesignationWithFile>) {
+            for (designation in designations) {
+                if (designation.declaration.resolvePhase >= FirResolvePhase.SUPER_TYPES) continue
+                val applier = DesignatedFirApplySupertypesTransformer(designation)
+                designation.firFile.transform<FirElement, Void?>(applier, null)
+                applier.declarationTransformer.ensureDesignationPassed()
+                designation.declaration.ensureResolvedDeep()
+            }
+        }
+
+        val filesToDesignations = visited.groupBy { it.firFile }
+        for (designationsPerFile in filesToDesignations) {
+            if (checkPCE) {
+                FirFileBuilder.runCustomResolveWithPCECheck(designationsPerFile.key, moduleFileCache) {
+                    applyToFileSymbols(designationsPerFile.value)
+                }
+            } else {
+                FirFileBuilder.runCustomResolveUnderLock(designationsPerFile.key, moduleFileCache) {
+                    applyToFileSymbols(designationsPerFile.value)
+                }
+            }
+        }
+    }
+
     override fun transformDeclaration() {
         check(designation.firFile.resolvePhase >= FirResolvePhase.IMPORTS) {
             "Invalid resolve phase of file. Should be IMPORTS but found ${designation.firFile.resolvePhase}"
@@ -105,70 +180,9 @@ internal class FirDesignatedSupertypeResolverTransformerForIDE(
         if (targetDesignation.isResolvedForAllDeclarations(FirResolvePhase.SUPER_TYPES, isOnAirResolve)) return
         targetDesignation.declaration.updateResolvedForAllDeclarations(FirResolvePhase.SUPER_TYPES)
 
-        val visitedSet = mutableSetOf<FirDeclarationUntypedDesignationWithFile>()
-        val toVisit = mutableSetOf<FirDeclarationUntypedDesignationWithFile>()
-        toVisit.add(targetDesignation)
-        while (toVisit.isNotEmpty()) {
-            for (nowVisit in toVisit) {
-
-                firLazyDeclarationResolver.lazyResolveDeclaration(
-                    declaration = nowVisit.firFile,
-                    moduleFileCache = moduleFileCache,
-                    toPhase = FirResolvePhase.IMPORTS,
-                    checkPCE = false,
-                )
-                val resolver = DesignatedFirSupertypeResolverVisitor(nowVisit)
-                if (checkPCE) {
-                    FirFileBuilder.runCustomResolveWithPCECheck(nowVisit.firFile, moduleFileCache) {
-                        nowVisit.firFile.accept(resolver, null)
-                    }
-                } else {
-                    FirFileBuilder.runCustomResolveUnderLock(nowVisit.firFile, moduleFileCache) {
-                        nowVisit.firFile.accept(resolver, null)
-                    }
-                }
-                resolver.declarationTransformer.ensureDesignationPassed()
-            }
-            visitedSet.addAll(toVisit)
-            toVisit.clear()
-
-            for (value in supertypeComputationSession.supertypeStatusMap.values) {
-                if (value !is SupertypeComputationStatus.Computed) continue
-                for (reference in value.supertypeRefs) {
-                    val classLikeDeclaration = reference.type.toSymbol(session)?.fir
-                    if (classLikeDeclaration !is FirClassLikeDeclaration<*>) continue
-                    if (visitedSet.any { it.declaration == classLikeDeclaration }) continue
-                    val containingFile = moduleFileCache.getContainerFirFile(classLikeDeclaration) ?: continue
-                    val designation = classLikeDeclaration.collectDesignation(containingFile)
-                    toVisit.add(designation)
-                }
-            }
-        }
-
+        val collected = collect(targetDesignation)
         supertypeComputationSession.breakLoops(session)
-
-        fun applyToFileSymbols(designations: List<FirDeclarationUntypedDesignationWithFile>) {
-            for (designation in designations) {
-                if (designation.declaration.resolvePhase >= FirResolvePhase.SUPER_TYPES) continue
-                val applier = DesignatedFirApplySupertypesTransformer(designation)
-                designation.firFile.transform<FirElement, Void?>(applier, null)
-                applier.declarationTransformer.ensureDesignationPassed()
-                designation.declaration.ensureResolvedDeep()
-            }
-        }
-
-        val filesToDesignations = visitedSet.groupBy { it.firFile }
-        for (designationsPerFile in filesToDesignations) {
-            if (checkPCE) {
-                FirFileBuilder.runCustomResolveWithPCECheck(designationsPerFile.key, moduleFileCache) {
-                    applyToFileSymbols(designationsPerFile.value)
-                }
-            } else {
-                FirFileBuilder.runCustomResolveUnderLock(designationsPerFile.key, moduleFileCache) {
-                    applyToFileSymbols(designationsPerFile.value)
-                }
-            }
-        }
+        apply(collected)
     }
 
     private fun FirDeclaration.ensureResolvedDeep() {

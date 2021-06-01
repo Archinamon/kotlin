@@ -15,7 +15,6 @@ import org.jetbrains.kotlin.fir.realPsi
 import org.jetbrains.kotlin.fir.resolve.FirTowerDataContext
 import org.jetbrains.kotlin.fir.resolve.ScopeSession
 import org.jetbrains.kotlin.fir.resolve.asTowerDataElement
-import org.jetbrains.kotlin.fir.resolve.firProvider
 import org.jetbrains.kotlin.fir.resolve.transformers.FirTypeResolveTransformer
 import org.jetbrains.kotlin.fir.resolve.transformers.body.resolve.FirTowerDataContextCollector
 import org.jetbrains.kotlin.fir.scopes.createImportingScopes
@@ -250,7 +249,7 @@ object LowLevelFirApiFacadeForResolveOnAir {
                 }
             } ?: newDeclarationWithReplacement
 
-            state.firLazyDeclarationResolver.lazyDesignatedResolveDeclaration(
+            state.firLazyDeclarationResolver.lazyResolveDeclaration(
                 firDeclarationToResolve = copiedFirDeclaration,
                 moduleFileCache = state.rootModuleSession.cache,
                 containerFirFile = originalFirFile,

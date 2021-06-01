@@ -18,15 +18,8 @@ internal interface FirLazyTransformerForIDE {
                 by FirDeclarationDataRegistry.data(ResolvePhaseWithForAllDeclarationsKey)
 
         var FirDeclaration.resolvePhaseWithForAllDeclarations: FirResolvePhase
-            get() = (resolvePhaseWithForAllDeclarationsAttr ?: FirResolvePhase.RAW_FIR).also { allPhase ->
-//                check(allPhase <= resolvePhase) {
-//                    "Invalid resolvePhaseWithForAllDeclarations get $resolvePhaseWithForAllDeclarationsAttr while resolvePhase is $resolvePhase"
-//                }
-            }
+            get() = resolvePhaseWithForAllDeclarationsAttr ?: FirResolvePhase.RAW_FIR
             set(value) {
-//                check(value <= resolvePhase) {
-//                    "Invalid resolvePhaseWithForAllDeclarations set resolvePhaseWithForAllDeclarationsAttr while resolvePhase is $resolvePhase"
-//                }
                 resolvePhaseWithForAllDeclarationsAttr = value
             }
 
@@ -38,7 +31,15 @@ internal interface FirLazyTransformerForIDE {
         }
 
         fun FirDeclarationUntypedDesignation.resolvePhaseForAllDeclarations(isOnAirResolve: Boolean): FirResolvePhase {
-            val allContaining = toSequence(includeTarget = true)
+            //TODO Make valid phase detection for these origins
+            val includeTarget = when (declaration.origin) {
+                is FirDeclarationOrigin.SubstitutionOverride,
+                is FirDeclarationOrigin.IntersectionOverride,
+                is FirDeclarationOrigin.Delegated -> false
+                else -> true
+            }
+
+            val allContaining = toSequence(includeTarget = includeTarget)
                 .maxByOrNull { it.resolvePhaseWithForAllDeclarations }
                 ?.resolvePhaseWithForAllDeclarations
                 ?: FirResolvePhase.RAW_FIR
