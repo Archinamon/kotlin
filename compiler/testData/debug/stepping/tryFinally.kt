@@ -56,7 +56,7 @@ fun box() {
 // LINENUMBERS
 // test.kt:13 foo
 // test.kt:14 foo
-// test.kt:10 foo
+// test.kt:13 foo
 // test.kt:15 foo
 // test.kt:30 box
 // test.kt:31 box
