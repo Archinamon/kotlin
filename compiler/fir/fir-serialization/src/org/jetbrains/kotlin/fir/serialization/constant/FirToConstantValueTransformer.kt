@@ -80,4 +80,11 @@ internal object FirToConstantValueTransformer : FirDefaultVisitor<ConstantValue<
         val outerClassId = classId.outerClassId ?: return null
         return EnumValue(outerClassId, enumEntry.name)
     }
+
+    override fun visitVarargArgumentsExpression(
+        varargArgumentsExpression: FirVarargArgumentsExpression,
+        data: Nothing?
+    ): ConstantValue<*> {
+        return ArrayValue(varargArgumentsExpression.arguments.mapNotNull { it.accept(this, null) })
+    }
 }
